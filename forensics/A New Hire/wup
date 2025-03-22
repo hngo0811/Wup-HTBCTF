@@ -1,0 +1,70 @@
+A new Hire
+
+The Royal Archives of Eldoria have recovered a mysterious document—an old resume once belonging to Lord Malakar before his fall from grace. 
+At first glance, it appears to be an ordinary record of his achievements as a noble knight, 
+but hidden within the text are secrets that reveal his descent into darkness.
+
+#recon 
+Có một tài liệu cũ liên quan đến Lord Malakar.
+Flag có thể được ẩn trong văn bản hoặc tài liệu tải về.
+
+tải file đã cho về giải nén cat thử ra,ta sẽ thấy trong file có 1 đoan nội dung 
+
+You can review his resume here:
+`storage.microsoftcloudservices.com:[PORT]/index.php`
+
+Thử truy cập vào trang web theo Port đề bài đã cho (nhớ ánh xạ vào file etc/host trên máy của mình trước).
+Ta sẽ thấy trang web này không cho xem hết nội dung và muốn mở window Explorer,check thử trên virus Total thì thấy URL này có hẳn 2 con malware nên ta buông luôn 
+
+#Exploitation
+Thử với hướng khác như đọc src của URL này : curl -s "http://storage.microsoftcloudservices.com:42697/index.php"
+Sau khi đọc src ta thấy được 1 hàm 
+
+ function getResume() {
+      window.location.href=`search:displayname=Downloads&subquery=\\\\${window.location.hostname}@${window.location.port}\\3fe1690d955e8fd2a0b282501570e1f4\\resumes\\`;
+    }
+
+Qua tìm hiểu \\3fe1690d955e8fd2a0b282501570e1f4\\resumes\\ có vẻ như là 1 đường dẫn đến thư mục chia sẻ SMB
+(cho ai chưa biết : SMB (Server Message Block) là một giao thức mạng dùng để chia sẻ tệp tin và thiết bị trong một mạng)
+
+tiếp tục chạy lệnh : curl -s "http://94.237.55.61:42697/3fe1690d955e8fd2a0b282501570e1f4/resumes/" để liệt kê thư mục 
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+<html>
+ <head>
+  <title>Index of /3fe1690d955e8fd2a0b282501570e1f4/resumes</title>
+ </head>
+ <body>
+<h1>Index of /3fe1690d955e8fd2a0b282501570e1f4/resumes</h1>
+<ul>
+  <li><a href="/3fe1690d955e8fd2a0b282501570e1f4/"> Parent Directory</a></li>
+  <li><a href="Resume.pdf%20.lnk"> Resume.pdf .lnk</a></li>
+</ul>
+</body>
+</html>
+
+để ý kĩ dòng <li><a href="Resume.pdf%20.lnk"> Resume.pdf .lnk</a></li> gợi ý rằng có 1 file .lnk thử tải về và phân tích sẽ thấy 1 đoạn mã được mã hóa bằng base64,
+giải mã thử thì đoạn mã này điều hướng người dùng đến một trang giả mạo hoặc tải file độc hại.
+
+curl -O "http://94.237.55.61:42697/3fe1690d955e8fd2a0b282501570e1f4/resumes/Resume.pdf%20.lnk" 
+
+thử tìm xem trong http://94.237.55.61:42697/3fe1690d955e8fd2a0b282501570e1f4 còn có tệp nào khác kh,ta sẽ thấy có thư mục config nữa
+
+nmh@nmh-virtual-machine:~$ curl -s "http://83.136.254.73:39620/3fe1690d955e8fd2a0b282501570e1f4/"
+
+<li><a href="Python312/"> Python312/</a></li> #Có thể chứa file cài đặt Python hoặc script liên quan.
+<li><a href="configs/"> configs/</a></li> #Thường chứa file cấu hình, có thể có mật khẩu hoặc thông tin quan trọng.
+<li><a href="resumes/"> resumes/</a></li>
+<li><a href="resumesS/"> resumesS/</a></li>
+
+curl -s "http://94.237.55.61:42697/3fe1690d955e8fd2a0b282501570e1f4/configs/"
+
+tìm trong thư mục này có 1 file client.py,xem thử file py sẽ thấy 1 đoạn SFRCezRQVF8yOF80bmRfbTFjcjBzMGZ0X3MzNHJjaD0xbjF0MTRsXzRjYzNzISF9Cg== có vẻ là định dạng Base64
+decode thử thì ra được FLAG :HTB{4PT_28_4nd_m1cr0s0ft_s34rch=1n1t14l_4cc3s!!}
+
+
+
+
+
+
+
